@@ -82,6 +82,7 @@ function ProfileCard({ player, levelInfo, dispatch }) {
 
             {/* Continue Mission CTA */}
             <ContinueMissionButton player={player} dispatch={dispatch} />
+            <ClaimCertificateButton player={player} dispatch={dispatch} />
         </motion.div>
     );
 }
@@ -104,6 +105,33 @@ function ContinueMissionButton({ player, dispatch }) {
         >
             ▶ CONTINUE MISSION
         </button>
+    );
+}
+
+function ClaimCertificateButton({ player, dispatch }) {
+    const isReady = player.completedMissions.length === MODULES.length;
+    if (!isReady) return null;
+
+    return (
+        <motion.button
+            className="btn w-full"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            whileHover={{ scale: 1.02 }}
+            style={{
+                marginTop: '1rem',
+                background: 'linear-gradient(45deg, var(--gold), #ff8c00)',
+                color: '#000',
+                border: 'none',
+                fontFamily: 'var(--font-pixel)',
+                fontSize: '0.55rem',
+                padding: '0.8rem',
+                boxShadow: '0 0 20px rgba(240,192,64,0.4)'
+            }}
+            onClick={() => dispatch({ type: 'SET_VIEW', payload: 'certification' })}
+        >
+            ✨ CLAIM CERTIFICATE ✨
+        </motion.button>
     );
 }
 

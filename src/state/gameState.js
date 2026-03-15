@@ -13,6 +13,8 @@ export const initialState = {
         streak: 3,
         completedMissions: [],
         badges: [],
+        email: '',
+        gitProfile: '',
         totalCommandsRun: 0,
         hintsUsed: 0,
     },
@@ -107,6 +109,15 @@ export function gameReducer(state, action) {
 
         case 'UPDATE_AVATAR':
             return { ...state, player: { ...state.player, avatar: action.payload } };
+
+        case 'UPDATE_PLAYER_INFO':
+            return {
+                ...state,
+                player: {
+                    ...state.player,
+                    ...action.payload
+                }
+            };
 
         default:
             return state;

@@ -6,19 +6,39 @@ import { XPBar } from './shared/XPBar';
 const AVATARS = ['👾', '🤖', '🦊', '🐉', '🧠', '⚡', '🌊', '🔥', '🌙', '🎯', '🦾', '🕵️'];
 
 export default function Profile({ player, dispatch }) {
+    const inputStyle = {
+        width: '100%',
+        background: 'var(--bg-3)', border: '1px solid var(--border)',
+        borderRadius: '6px', padding: '0.6rem 0.8rem',
+        color: 'var(--text)', fontFamily: 'var(--font-code)',
+        fontSize: '0.85rem', outline: 'none',
+        transition: 'border-color 0.2s',
+    };
+
     const { current, next } = getLevelInfo(player.xp);
     // Controlled username input with local state — fixes concatenation bug
     const [editName, setEditName] = useState(player.username);
+    const [editEmail, setEditEmail] = useState(player.email || '');
+    const [editGit, setEditGit] = useState(player.gitProfile || '');
 
     // Keep local state in sync if player name is updated externally (e.g. reset)
     useEffect(() => {
         setEditName(player.username);
-    }, [player.username]);
+        setEditEmail(player.email || '');
+        setEditGit(player.gitProfile || '');
+    }, [player.username, player.email, player.gitProfile]);
 
-    const saveName = () => {
-        const trimmed = editName.trim();
-        if (trimmed) dispatch({ type: 'UPDATE_PLAYER_NAME', payload: trimmed });
-        else setEditName(player.username); // revert on empty
+    const saveInfo = () => {
+        const trimmedName = editName.trim();
+        dispatch({
+            type: 'UPDATE_PLAYER_INFO',
+            payload: {
+                username: trimmedName || player.username,
+                email: editEmail.trim(),
+                gitProfile: editGit.trim()
+            }
+        });
+        if (!trimmedName) setEditName(player.username);
     };
 
     return (
@@ -78,39 +98,57 @@ export default function Profile({ player, dispatch }) {
                         )}
                     </motion.div>
 
-                    {/* Edit username — controlled input fixes the concat bug */}
+                    {/* Edit Profile Info */}
                     <motion.div
-                        className="glass p-4"
+                        className="glass p-6"
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0, transition: { delay: 0.08 } }}
                     >
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginBottom: '0.5rem' }}>
-                            ✏ Edit Username
+                        <div className="pixel neon-text mb-4" style={{ fontSize: '0.55rem' }}>
+                            📝 REGISTRY DETAILS
                         </div>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <input
-                                type="text"
-                                value={editName}
-                                maxLength={20}
-                                onChange={e => setEditName(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && saveName()}
-                                onBlur={saveName}
-                                style={{
-                                    flex: 1,
-                                    background: 'var(--bg-3)', border: '1px solid var(--border)',
-                                    borderRadius: '6px', padding: '0.5rem 0.75rem',
-                                    color: 'var(--text)', fontFamily: 'var(--font-code)',
-                                    fontSize: '0.85rem', outline: 'none',
-                                    transition: 'border-color 0.2s',
-                                }}
-                                onFocus={e => (e.target.style.borderColor = 'var(--neon)')}
-                            />
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                                <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', marginBottom: '0.4rem' }}>USERNAME</label>
+                                <input
+                                    type="text"
+                                    value={editName}
+                                    maxLength={20}
+                                    onChange={e => setEditName(e.target.value)}
+                                    placeholder="Hacker name"
+                                    style={inputStyle}
+                                />
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', marginBottom: '0.4rem' }}>EMAIL ADDRESS</label>
+                                <input
+                                    type="email"
+                                    value={editEmail}
+                                    onChange={e => setEditEmail(e.target.value)}
+                                    placeholder="your@email.com"
+                                    style={inputStyle}
+                                />
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', marginBottom: '0.4rem' }}>GIT PROFILE URL</label>
+                                <input
+                                    type="text"
+                                    value={editGit}
+                                    onChange={e => setEditGit(e.target.value)}
+                                    placeholder="https://github.com/..."
+                                    style={inputStyle}
+                                />
+                            </div>
+
                             <button
-                                className="btn btn-primary"
-                                style={{ padding: '0.5rem 0.9rem', fontSize: '0.75rem' }}
-                                onClick={saveName}
+                                className="btn btn-primary w-full"
+                                style={{ marginTop: '0.5rem', padding: '0.75rem', fontSize: '0.75rem' }}
+                                onClick={saveInfo}
                             >
-                                SAVE
+                                UPDATE REGISTRY
                             </button>
                         </div>
                     </motion.div>

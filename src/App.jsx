@@ -6,6 +6,7 @@ import Dashboard from './components/Dashboard';
 import MissionScreen from './components/MissionScreen';
 import Profile from './components/Profile';
 import Reference from './components/Reference';
+import Certification from './components/Certification';
 
 const STORAGE_KEY = 'gitopia_v1_state';
 
@@ -86,9 +87,16 @@ export default function App() {
             </motion.div>
           )}
 
+
           {view === 'reference' && (
             <motion.div key="reference" {...PAGE_TRANSITION}>
               <Reference />
+            </motion.div>
+          )}
+
+          {view === 'certification' && (
+            <motion.div key="certification" {...PAGE_TRANSITION}>
+              <Certification player={player} onBack={() => dispatch({ type: 'SET_VIEW', payload: 'dashboard' })} />
             </motion.div>
           )}
         </AnimatePresence>

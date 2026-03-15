@@ -7,6 +7,7 @@ import MissionScreen from './components/MissionScreen';
 import Profile from './components/Profile';
 import Reference from './components/Reference';
 import Certification from './components/Certification';
+import Footer from './components/Footer';
 
 const STORAGE_KEY = 'gitopia_v1_state';
 
@@ -101,6 +102,9 @@ export default function App() {
           )}
         </AnimatePresence>
       </main>
+
+      {/* FOOTER — only visible in main views */}
+      {view !== 'mission' && <Footer />}
     </div>
   );
 }

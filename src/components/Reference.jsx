@@ -310,7 +310,7 @@ function SyntaxExample({ ex, handleCopy, cardHovered }) {
         if (syntax.includes('git checkout -- ')) return "// Restores a file to its last committed state";
         if (syntax === 'git switch main') return "// Modern way to switch to main branch";
         if (syntax.includes('git switch -c')) return "// Modern way to create and switch branch";
-        if (syntax.includes('git merge ') && !syntax.includes('--no-ff')) return "// Joins a feature branch into current branch";
+        if (syntax.includes('git merge ') && !syntax.includes('--no-ff')) return "// Joins a loginpage branch into current branch";
         if (syntax.includes('git merge --no-ff')) return "// Forces creation of a merge commit";
         if (syntax === 'git rebase main') return "// Replays your commits on top of main";
         if (syntax.includes('git rebase -i')) return "// Opens interactive rebase (edit history)";
@@ -386,7 +386,7 @@ function SyntaxExample({ ex, handleCopy, cardHovered }) {
         if (syntax === 'git restore filename') return "// Discards uncommitted changes in a file";
         if (syntax === 'git restore --staged filename') return "// Unstages a file without losing changes";
         if (syntax === 'git switch main') return "// Focuses on the main development branch";
-        if (syntax === 'git switch -c new-feature') return "// Creates and switches to a feature branch";
+        if (syntax === 'git switch -c loginpage') return "// Creates and switches to a loginpage branch";
 
         // --- Submodules & Worktrees ---
         if (syntax === 'git submodule add url') return "// Links an external repo as a project dependency";

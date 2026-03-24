@@ -11,8 +11,9 @@ const normalizeForMatch = (str) => {
         .replace(/────────►/g, ' ') // Remove long arrows
         .replace(/→/g, ' ')           // Remove standard arrows
         // Remove dashes/separators that aren't command flags (e.g., "cmd1 - cmd2")
-        .replace(/\s+[-–—]+\s+/g, ' ') 
-        // Remove symbols like ( ) that might be in descriptive text but not crucial for the gist
+        .replace(/\s+[-–—>]+\s+/g, ' ') 
+        .replace(/->/g, ' ')
+        .replace(/=>/g, ' ')        // Remove symbols like ( ) that might be in descriptive text but not crucial for the gist
         .replace(/[()]/g, '')
         .replace(/\s+/g, ' ')         // Collapse all whitespace to single spaces
         .trim();

@@ -30,9 +30,6 @@ export default function Navbar({ view, player, dispatch }) {
                 <div className="pixel neon-text" style={{ fontSize: '0.85rem' }}>
                     Gitopia
                 </div>
-                <span className="badge badge-neon" style={{ fontSize: '0.65rem', padding: '0.2rem 0.6rem' }}>
-                    v2.0
-                </span>
             </div>
 
             {/* Navigation Links */}
@@ -59,6 +56,27 @@ export default function Navbar({ view, player, dispatch }) {
                         <span className="hide-mobile">{item.label}</span>
                     </button>
                 ))}
+                {player.completedMissions.length >= 10 && (
+                    <button
+                        onClick={() => dispatch({ type: 'SET_VIEW', payload: 'certification' })}
+                        style={{
+                            background: view === 'certification' ? 'rgba(240,192,64,0.2)' : 'rgba(240,192,64,0.08)',
+                            border: `2px solid ${view === 'certification' ? 'var(--gold)' : 'rgba(240,192,64,0.4)'}`,
+                            borderRadius: '8px',
+                            padding: '0.55rem 1.1rem',
+                            color: 'var(--gold)',
+                            fontFamily: 'var(--font-code)',
+                            fontSize: '0.94rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            display: 'flex', alignItems: 'center', gap: '0.45rem',
+                        }}
+                    >
+                        <span style={{ fontSize: '1.1rem' }}>🎓</span>
+                        <span className="hide-mobile">CERTIFICATE</span>
+                    </button>
+                )}
             </div>
 
             {/* Player info */}

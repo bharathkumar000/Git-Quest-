@@ -7,7 +7,7 @@ export const initialState = {
     missionPhase: 'briefing', // 'briefing' | 'challenge' | 'reward'
     activeChallengeIndex: 0,
     player: {
-        username: 'Hacker',
+        username: '',
         avatar: '👾',
         xp: 0,
         streak: 3,
@@ -17,6 +17,7 @@ export const initialState = {
         gitProfile: '',
         totalCommandsRun: 0,
         hintsUsed: 0,
+        hasClaimedCertificate: false,
     },
     currentMissionXP: 0,      // XP accumulated in current mission run
     earnedBadge: null,        // badge just unlocked (for animation)

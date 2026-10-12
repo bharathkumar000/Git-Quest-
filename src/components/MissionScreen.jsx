@@ -19,6 +19,40 @@ const normalizeForMatch = (str) => {
         .trim();
 };
 
+// Utility for points calculation
+const calculatePoints = (baseXP, errors, hints, timeSeconds) => {
+    const errorPenalty = errors * 5;
+    const hintPenalty = hints * 10;
+    const timePenalty = Math.floor(timeSeconds / 30) * 2;
+    const final = baseXP - errorPenalty - hintPenalty - timePenalty;
+    return {
+        score: Math.max(0, final),
+        breakdown: { errorPenalty, hintPenalty, timePenalty }
+    };
+};
+
+// Confetti particle for reward screen
+function ConfettiParticle({ delay, color }) {
+    const x = Math.random() * 100;
+    const duration = 2 + Math.random() * 2;
+    const size = 4 + Math.random() * 6;
+    return (
+        <motion.div
+            initial={{ opacity: 1, y: -20, x: `${x}%`, rotate: 0, scale: 1 }}
+            animate={{ opacity: 0, y: 400, rotate: 360 + Math.random() * 360, scale: 0.3 }}
+            transition={{ duration, delay, ease: 'easeOut' }}
+            style={{
+                position: 'absolute', top: 0,
+                width: size, height: size,
+                background: color,
+                borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+                pointerEvents: 'none', zIndex: 10,
+                boxShadow: `0 0 4px ${color}`,
+            }}
+        />
+    );
+}
+
 export default function MissionScreen({ 
     activeMissionId, missionPhase, activeChallengeIndex, 
     currentMissionXP, lastXPGain, earnedBadge, dispatch 
@@ -32,9 +66,16 @@ export default function MissionScreen({
             <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 marginBottom: '1.25rem', padding: '0.75rem 1rem',
-                background: 'rgba(22,27,34,0.7)', border: '1px solid rgba(57,255,20,0.15)',
-                borderRadius: '8px',
+                background: 'rgba(16,22,32,0.85)', border: '1px solid rgba(57,255,20,0.12)',
+                borderRadius: '12px', position: 'relative', overflow: 'hidden',
+                backdropFilter: 'blur(12px)',
             }}>
+                {/* Top gradient accent */}
+                <div style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
+                    background: 'linear-gradient(90deg, transparent, var(--neon), var(--blue), transparent)',
+                    opacity: 0.5,
+                }} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <span style={{ fontSize: '1.5rem' }}>{mission.icon}</span>
                     <div>
@@ -43,17 +84,17 @@ export default function MissionScreen({
                     </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span style={{ color: 'var(--gold)', fontSize: '0.75rem', fontWeight: 700 }}>
+                    <span style={{ color: 'var(--gold)', fontSize: '0.75rem', fontWeight: 700, textShadow: '0 0 8px rgba(240,192,64,0.3)' }}>
                         +{mission.rewardXP} XP
                     </span>
                     {/* Phase dots */}
-                    <div style={{ display: 'flex', gap: '4px' }}>
+                    <div style={{ display: 'flex', gap: '5px' }}>
                         {['briefing', 'challenge', 'reward'].map((ph, i) => (
-                            <div key={ph} style={{
+                            <motion.div key={ph} animate={missionPhase === ph ? { scale: [1, 1.3, 1] } : {}} transition={{ duration: 1.5, repeat: Infinity }} style={{
                                 width: 8, height: 8, borderRadius: '50%',
                                 background: missionPhase === ph ? 'var(--neon)'
                                     : ['briefing', 'challenge', 'reward'].indexOf(missionPhase) > i ? 'var(--blue)'
-                                        : '#333',
+                                        : 'rgba(255,255,255,0.1)',
                                 boxShadow: missionPhase === ph ? 'var(--glow-neon)' : 'none',
                                 transition: 'all 0.3s',
                             }} />
@@ -102,9 +143,11 @@ export default function MissionScreen({
 // PHASE 1: BRIEFING
 // ═══════════════════════════════════════════════════
 function BriefingPhase({ mission, dispatch }) {
+    const concepts = mission.challenges.filter(c => c.context).map(c => c.context);
+    const totalLines = mission.briefing.lines.length + concepts.length;
     const [visibleLines, setVisibleLines] = useState(0);
     const [graphStep, setGraphStep] = useState(0);
-    const allLinesVisible = visibleLines >= mission.briefing.lines.length;
+    const allLinesVisible = visibleLines >= totalLines;
 
     useEffect(() => {
         if (!allLinesVisible) {
@@ -118,19 +161,44 @@ function BriefingPhase({ mission, dispatch }) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div className="glass p-6">
-                <div className="pixel neon-text" style={{ fontSize: '0.58rem', marginBottom: '1.25rem' }}>
+                <div className="pixel neon-text" style={{ fontSize: '0.58rem', marginBottom: '0.25rem' }}>
                     {mission.briefing.title}
                 </div>
+                <div style={{ color: 'var(--gold)', fontSize: '0.7rem', fontWeight: 700, marginBottom: '1.25rem', fontFamily: 'var(--font-pixel)' }}>
+                    MODULE VALUE: 100 POINTS
+                </div>
 
-                {/* Animated bullet lines */}
+                {(mission.id === 'git_foundations' || mission.id === 'remotes') && <GitVsGithubPanel />}
+
+                {/* Animated bullet lines and concepts */}
                 <div style={{ marginBottom: '1.5rem' }}>
                     {mission.briefing.lines.map((line, i) => (
-                        <AnimatePresence key={i}>
+                        <AnimatePresence key={`line-${i}`}>
                             {i < visibleLines && (
                                 <BriefingLine text={line.replaceAll('→', ' ────────► ')} />
                             )}
                         </AnimatePresence>
                     ))}
+                    {concepts.map((concept, i) => {
+                        const index = mission.briefing.lines.length + i;
+                        return (
+                            <AnimatePresence key={`concept-${i}`}>
+                                {index < visibleLines && (
+                                    <motion.div
+                                        initial={{ opacity: 0, x: -10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        style={{
+                                            background: 'rgba(57,255,20,0.08)', border: '1px solid rgba(57,255,20,0.2)',
+                                            padding: '0.75rem 1rem', borderRadius: '8px', marginTop: '0.75rem',
+                                            fontSize: '0.8rem', lineHeight: 1.5, color: 'var(--text)',
+                                        }}
+                                    >
+                                        💡 <strong style={{ color: 'var(--neon)' }}>CONCEPT:</strong> {concept}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        );
+                    })}
                 </div>
 
                 {/* ASCII Diagram terminal */}
@@ -230,10 +298,22 @@ function BriefingPhase({ mission, dispatch }) {
 function ChallengePhase({ mission, activeChallengeIndex, dispatch }) {
     const challenge = mission.challenges[activeChallengeIndex];
     const total = mission.challenges.length;
+    const [startTime] = useState(Date.now());
+    const [challengeResult, setChallengeResult] = useState(null);
 
-    const handleComplete = (xpEarned, hintPenalty = 0) => {
-        const finalXP = Math.max(0, xpEarned - hintPenalty);
-        dispatch({ type: 'CHALLENGE_COMPLETE', payload: finalXP });
+    const handleComplete = (xpEarned, penaltyData) => {
+        const timeTaken = (Date.now() - startTime) / 1000;
+        const baseXP = 100 / total;
+        const result = calculatePoints(baseXP, penaltyData.errors, penaltyData.hints, timeTaken);
+        
+        setChallengeResult({
+            score: result.score,
+            max: baseXP,
+            time: timeTaken,
+            ...result.breakdown
+        });
+
+        dispatch({ type: 'CHALLENGE_COMPLETE', payload: result.score });
 
         const isLast = activeChallengeIndex + 1 >= total;
         setTimeout(() => {
@@ -241,12 +321,13 @@ function ChallengePhase({ mission, activeChallengeIndex, dispatch }) {
                 dispatch({ type: 'FINISH_MISSION', payload: { module: mission, bonusXP: 0 } });
             } else {
                 dispatch({ type: 'NEXT_CHALLENGE' });
+                setChallengeResult(null);
             }
-        }, 800);
+        }, 3500); 
     };
 
     return (
-        <div>
+        <div style={{ position: 'relative' }}>
             {/* Progress header */}
             <div style={{
                 display: 'flex', alignItems: 'center', gap: '1rem',
@@ -265,12 +346,36 @@ function ChallengePhase({ mission, activeChallengeIndex, dispatch }) {
                     />
                 </div>
                 <span style={{ color: 'var(--gold)', fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                    +{challenge.xp} XP
+                    VAL: {Math.round(100/total)} PTS
                 </span>
                 <span className="badge badge-blue" style={{ fontSize: '0.52rem' }}>
                     {challenge.type.replace('_', ' ').toUpperCase()}
                 </span>
             </div>
+
+            <AnimatePresence>
+                {challengeResult && (
+                    <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="glass"
+                        style={{
+                            position: 'absolute', top: '10px', right: '10px', zIndex: 100,
+                            padding: '0.75rem 1rem', textAlign: 'right', border: '1px solid var(--neon)',
+                            boxShadow: 'var(--glow-neon)', background: 'rgba(13,17,23,0.9)',
+                            backdropFilter: 'blur(8px)', borderRadius: '12px'
+                        }}
+                    >
+                        <div className="pixel neon-text" style={{ fontSize: '0.45rem', marginBottom: '0.2rem' }}>SUCCESS!</div>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--neon)', lineHeight: 1 }}>
+                            {challengeResult.score.toFixed(1)} <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>PTS</span>
+                        </div>
+                        <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', marginTop: '0.4rem', letterSpacing: '0.02em' }}>
+                           PENALTY: -{challengeResult.errorPenalty + challengeResult.hintPenalty + challengeResult.timePenalty}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {challenge.type === 'terminal' && (
                 <TerminalChallenge challenge={challenge} onComplete={handleComplete} />
@@ -295,11 +400,12 @@ function ChallengePhase({ mission, activeChallengeIndex, dispatch }) {
 function TerminalChallenge({ challenge, onComplete }) {
     const [hintsUsed, setHintsUsed] = useState(0);
     const [solved, setSolved] = useState(false);
+    const [wrongCount, setWrongCount] = useState(0);
 
     const handleSuccess = () => {
         if (solved) return;
         setSolved(true);
-        onComplete(challenge.xp, hintsUsed * 10);
+        onComplete(challenge.xp, { hints: hintsUsed, errors: wrongCount });
     };
 
     return (
@@ -307,6 +413,7 @@ function TerminalChallenge({ challenge, onComplete }) {
             <div className="pixel" style={{ color: 'var(--blue)', fontSize: '0.52rem', marginBottom: '1rem' }}>
                 ⌨ TERMINAL CHALLENGE
             </div>
+
             <p style={{ marginBottom: '1.25rem', fontSize: '0.85rem', lineHeight: 1.65, color: 'var(--text)' }}>
                 {challenge.instruction}
             </p>
@@ -315,6 +422,8 @@ function TerminalChallenge({ challenge, onComplete }) {
                 expected={challenge.expected}
                 hints={challenge.hints}
                 onSuccess={handleSuccess}
+                onError={() => setWrongCount(c => c + 1)}
+                onHint={h => setHintsUsed(h)}
             />
             <AnimatePresence>
                 {solved && (
@@ -327,7 +436,7 @@ function TerminalChallenge({ challenge, onComplete }) {
                             borderRadius: '6px', color: 'var(--neon)', fontSize: '0.82rem',
                         }}
                     >
-                        ✓ {challenge.successMsg}
+                        ✓ {challenge.successMsg || 'Command accepted!'}
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -360,9 +469,13 @@ function MCQChallenge({ challenge, onComplete }) {
         setResult(isCorrect ? 'correct' : 'wrong');
 
         if (isCorrect) {
-            onComplete(challenge.xp, wrongCount * 5 + hintsShown * 10);
+            onComplete(challenge.xp, { errors: wrongCount, hints: hintsShown });
         } else {
-            setWrongCount(c => c + 1);
+            setWrongCount(c => {
+                const newC = c + 1;
+                if (newC === 3 && hintsShown === 0) setHintsShown(1);
+                return newC;
+            });
             setTimeout(() => {
                 setResult(null);
                 setSelected(null);
@@ -375,7 +488,8 @@ function MCQChallenge({ challenge, onComplete }) {
             <div className="pixel" style={{ color: 'var(--blue)', fontSize: '0.52rem', marginBottom: '1rem' }}>
                 {challenge.type === 'scenario' ? '📡 SCENARIO CHALLENGE' : '📜 MULTIPLE CHOICE CHALLENGE'}
             </div>
-            
+
+
             {challenge.situation && (
                 <div style={{
                     background: 'rgba(88,166,255,0.08)', border: '1px solid rgba(88,166,255,0.2)',
@@ -433,7 +547,7 @@ function MCQChallenge({ challenge, onComplete }) {
                 </div>
             )}
 
-            <HintRow hints={challenge.hints} hintsShown={hintsShown} setHintsShown={setHintsShown} />
+            <HintRow hints={challenge.hints} hintsShown={hintsShown} setHintsShown={setHintsShown} wrongCount={wrongCount} />
 
             <button
                 className="btn btn-primary w-full"
@@ -479,9 +593,13 @@ function OrderChallenge({ challenge, onComplete }) {
         const correct = JSON.stringify(sequence) === JSON.stringify(challenge.correct);
         setFeedback(correct ? 'correct' : 'wrong');
         if (correct) {
-            onComplete(challenge.xp, wrongCount * 5 + hintsShown * 10);
+            onComplete(challenge.xp, { errors: wrongCount, hints: hintsShown });
         } else {
-            setWrongCount(c => c + 1);
+            setWrongCount(c => {
+                const newC = c + 1;
+                if (newC === 3 && hintsShown === 0) setHintsShown(1);
+                return newC;
+            });
             setTimeout(() => setFeedback(null), 2000);
         }
     };
@@ -491,6 +609,7 @@ function OrderChallenge({ challenge, onComplete }) {
             <div className="pixel" style={{ color: 'var(--purple)', fontSize: '0.52rem', marginBottom: '1rem' }}>
                 🔢 SEQUENCE CHALLENGE
             </div>
+
             <p style={{ marginBottom: '1.25rem', fontSize: '0.88rem', lineHeight: 1.65 }}>{challenge.question}</p>
 
             {/* Available items */}
@@ -556,7 +675,7 @@ function OrderChallenge({ challenge, onComplete }) {
                 ))}
             </div>
 
-            <HintRow hints={challenge.hints} hintsShown={hintsShown} setHintsShown={setHintsShown} />
+            <HintRow hints={challenge.hints} hintsShown={hintsShown} setHintsShown={setHintsShown} wrongCount={wrongCount} />
 
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
                 <button className="btn" onClick={clearAll} style={{ whiteSpace: 'nowrap' }}>
@@ -588,9 +707,13 @@ function FixCommandChallenge({ challenge, onComplete }) {
         const isCorrect = normalizeForMatch(answer) === normalizeForMatch(challenge.correct);
         setFeedback(isCorrect ? 'correct' : 'wrong');
         if (isCorrect) {
-            onComplete(challenge.xp, wrongCount * 5 + hintsShown * 10);
+            onComplete(challenge.xp, { errors: wrongCount, hints: hintsShown });
         } else {
-            setWrongCount(c => c + 1);
+            setWrongCount(c => {
+                const newC = c + 1;
+                if (newC === 3 && hintsShown === 0) setHintsShown(1);
+                return newC;
+            });
             setTimeout(() => setFeedback(null), 1500);
         }
     };
@@ -600,6 +723,7 @@ function FixCommandChallenge({ challenge, onComplete }) {
             <div className="pixel" style={{ color: 'var(--red)', fontSize: '0.52rem', marginBottom: '1rem' }}>
                 🔧 FIX THE COMMAND
             </div>
+
             <p style={{ marginBottom: '1.25rem', fontSize: '0.88rem', lineHeight: 1.65 }}>{challenge.question}</p>
 
             <div className="terminal-window" style={{ marginBottom: '1rem' }}>
@@ -628,7 +752,7 @@ function FixCommandChallenge({ challenge, onComplete }) {
                 </div>
             </div>
 
-            <HintRow hints={challenge.hints} hintsShown={hintsShown} setHintsShown={setHintsShown} />
+            <HintRow hints={challenge.hints} hintsShown={hintsShown} setHintsShown={setHintsShown} wrongCount={wrongCount} />
 
             <button
                 className="btn btn-primary w-full"
@@ -672,7 +796,6 @@ function ConflictChallenge({ challenge, onComplete }) {
             setTimeout(() => setFeedback(null), 3000);
             return;
         }
-
         // 2. Check if main branch version was kept instead of loginpage
         const textWithoutMarkers = resolved.trim();
         if (textWithoutMarkers.includes('Hello from main') && !textWithoutMarkers.includes('Hello from loginpage')) {
@@ -701,11 +824,15 @@ function ConflictChallenge({ challenge, onComplete }) {
         if (isExactMatch || isContentMatch) {
             setFeedback('correct');
             setStatusMsg('✓ CONFLICT RESOLVED! Advancing to next step...');
-            onComplete(challenge.xp, wrongCount * 5 + hintsShown * 10);
+            onComplete(challenge.xp, { errors: wrongCount, hints: hintsShown });
         } else {
             setFeedback('wrong');
             setStatusMsg('✗ Not quite right. Target code: console.log("Hello from loginpage")');
-            setWrongCount(c => c + 1);
+            setWrongCount(c => {
+                const newC = c + 1;
+                if (newC === 3 && hintsShown === 0) setHintsShown(1);
+                return newC;
+            });
             setTimeout(() => setFeedback(null), 3000);
         }
     };
@@ -762,7 +889,7 @@ function ConflictChallenge({ challenge, onComplete }) {
                 )}
             </AnimatePresence>
 
-            <HintRow hints={challenge.hints} hintsShown={hintsShown} setHintsShown={setHintsShown} />
+            <HintRow hints={challenge.hints} hintsShown={hintsShown} setHintsShown={setHintsShown} wrongCount={wrongCount} />
 
             <button
                 className="btn btn-primary w-full"
@@ -825,10 +952,11 @@ function BriefingLine({ text }) {
 }
 
 // ── Shared Hint Row ───────────────────────────────
-function HintRow({ hints, hintsShown, setHintsShown }) {
+function HintRow({ hints, hintsShown, setHintsShown, wrongCount = 0 }) {
     if (!hints || hints.length === 0) return null;
+    if (wrongCount < 3 && hintsShown === 0) return null;
     return (
-        <div>
+        <div style={{ marginTop: '0.75rem' }}>
             <button
                 className="btn"
                 style={{ borderColor: 'var(--gold)', color: 'var(--gold)', padding: '0.25rem 0.7rem', fontSize: '0.68rem' }}
@@ -860,41 +988,75 @@ function HintRow({ hints, hintsShown, setHintsShown }) {
 }
 
 // ═══════════════════════════════════════════════════
-// PHASE 3: REWARD
+// PHASE 3: REWARD (with confetti)
 // ═══════════════════════════════════════════════════
 function RewardPhase({ mission, totalXP, actualGainedXP, earnedBadge, dispatch }) {
     const badge = BADGES.find(b => b.id === earnedBadge);
     const [animatedXP, setAnimatedXP] = useState(0);
-    const isPerfect = totalXP >= mission.rewardXP;
+    const isPerfect = totalXP >= 95;
+
+    const confettiColors = ['#39ff14', '#58a6ff', '#f0c040', '#bd93f9', '#ff4d4d', '#00f0ff'];
+    const confettiParticles = Array.from({ length: 30 }, (_, i) => ({
+        id: i, delay: Math.random() * 0.8,
+        color: confettiColors[i % confettiColors.length],
+    }));
 
     useEffect(() => {
         if (totalXP === 0) return;
         let current = 0;
-        const step = totalXP / 50;
+        const step = totalXP / 60;
         const interval = setInterval(() => {
             current = Math.min(current + step, totalXP);
             setAnimatedXP(Math.round(current));
             if (current >= totalXP) clearInterval(interval);
-        }, 20);
+        }, 16);
         return () => clearInterval(interval);
     }, [totalXP]);
 
     return (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem 0 2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem 0 2rem', position: 'relative', overflow: 'hidden', minHeight: '450px' }}>
+            {/* Confetti */}
+            {confettiParticles.map(p => (
+                <ConfettiParticle key={p.id} delay={p.delay} color={p.color} />
+            ))}
+
             <motion.div
                 className="glass"
                 style={{
-                    maxWidth: '480px', width: '100%', textAlign: 'center',
-                    padding: '2.5rem 2rem',
+                    maxWidth: '520px', width: '100%', textAlign: 'center',
+                    padding: '2.5rem 2rem', position: 'relative',
                     border: '2px solid var(--gold)',
-                    boxShadow: 'var(--glow-gold)',
+                    boxShadow: '0 0 40px rgba(240,192,64,0.15), 0 0 80px rgba(240,192,64,0.05)',
+                    overflow: 'hidden',
                 }}
                 initial={{ scale: 0.85, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
             >
+                {/* Radial glow behind */}
+                <div style={{
+                    position: 'absolute', top: '50%', left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: '300px', height: '300px',
+                    background: 'radial-gradient(circle, rgba(240,192,64,0.08) 0%, transparent 70%)',
+                    pointerEvents: 'none',
+                }} />
+
+                {/* Animated ring */}
+                <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+                    style={{
+                        position: 'absolute', top: '50%', left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '250px', height: '250px',
+                        border: '1px dashed rgba(240,192,64,0.12)',
+                        borderRadius: '50%', pointerEvents: 'none',
+                    }}
+                />
+
                 <motion.div
                     className="pixel gold-text"
-                    style={{ fontSize: '0.9rem', letterSpacing: '0.1em', marginBottom: '1.25rem' }}
+                    style={{ fontSize: '0.85rem', letterSpacing: '0.12em', marginBottom: '1.25rem', position: 'relative' }}
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0, transition: { delay: 0.2 } }}
                 >
@@ -902,7 +1064,7 @@ function RewardPhase({ mission, totalXP, actualGainedXP, earnedBadge, dispatch }
                 </motion.div>
 
                 <motion.div
-                    style={{ fontSize: '4rem', marginBottom: '0.75rem' }}
+                    style={{ fontSize: '4rem', marginBottom: '0.75rem', position: 'relative' }}
                     initial={{ scale: 0, rotate: -20 }}
                     animate={{ scale: 1, rotate: 0, transition: { type: 'spring', stiffness: 200, delay: 0.25 } }}
                 >
@@ -910,24 +1072,37 @@ function RewardPhase({ mission, totalXP, actualGainedXP, earnedBadge, dispatch }
                 </motion.div>
 
                 <motion.div
-                    style={{ fontSize: '3rem', fontWeight: 700, color: 'var(--gold)', lineHeight: 1, marginBottom: '0.5rem' }}
+                    style={{
+                        fontSize: '2.8rem', fontWeight: 800, color: 'var(--gold)', lineHeight: 1,
+                        marginBottom: '0.5rem', position: 'relative',
+                        textShadow: '0 0 20px rgba(240,192,64,0.4)',
+                        fontVariantNumeric: 'tabular-nums',
+                    }}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1, transition: { delay: 0.4 } }}
                 >
-                    +{animatedXP === 0 && actualGainedXP === 0 ? 0 : animatedXP} XP
+                    {animatedXP.toFixed(1)} <span style={{ fontSize: '1.2rem', opacity: 0.7 }}>POINTS</span>
                 </motion.div>
 
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginBottom: '1.5rem' }}>
+                <motion.div
+                    style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginBottom: '1.5rem', position: 'relative' }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1, transition: { delay: 0.5 } }}
+                >
                     {actualGainedXP === 0 && (
                         <span style={{ color: 'var(--blue)' }}>🛰️ REPLAY: You already earned rewards for this mission!</span>
                     )}
                     {actualGainedXP > 0 && isPerfect && (
-                        <span style={{ color: 'var(--neon)' }}>⚡ PERFECT RUN — Full XP awarded!</span>
+                        <motion.span
+                            style={{ color: 'var(--neon)' }}
+                            animate={{ textShadow: ['0 0 8px rgba(57,255,20,0.3)', '0 0 16px rgba(57,255,20,0.6)', '0 0 8px rgba(57,255,20,0.3)'] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                        >⚡ PERFECT RUN — Elite status confirmed!</motion.span>
                     )}
                     {actualGainedXP > 0 && !isPerfect && (
-                        `${totalXP} / ${mission.rewardXP} XP earned`
+                        `Final Score: ${totalXP.toFixed(1)} / 100`
                     )}
-                </div>
+                </motion.div>
 
                 {badge && (
                     <motion.div
@@ -935,25 +1110,30 @@ function RewardPhase({ mission, totalXP, actualGainedXP, earnedBadge, dispatch }
                         animate={{ scale: 1, rotate: 0, transition: { type: 'spring', delay: 0.65 } }}
                         style={{
                             display: 'inline-block', padding: '1rem 1.5rem', marginBottom: '1.75rem',
-                            background: 'rgba(240,192,64,0.12)', border: '2px solid var(--gold)',
-                            borderRadius: '12px', boxShadow: 'var(--glow-gold)',
+                            background: 'rgba(240,192,64,0.08)', border: '2px solid var(--gold)',
+                            borderRadius: '14px', boxShadow: '0 0 30px rgba(240,192,64,0.2)',
+                            position: 'relative',
                         }}
                     >
                         <div style={{ fontSize: '2.5rem', marginBottom: '0.3rem' }}>{badge.icon}</div>
                         <div className="pixel gold-text" style={{ fontSize: '0.48rem', letterSpacing: '0.05em' }}>
                             {badge.name}
                         </div>
-                        <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', marginTop: '3px' }}>
-                            BADGE UNLOCKED!
-                        </div>
+                        <motion.div
+                            style={{ fontSize: '0.6rem', color: 'var(--neon)', marginTop: '4px', fontWeight: 700 }}
+                            animate={{ opacity: [0.5, 1, 0.5] }}
+                            transition={{ duration: 1.5, repeat: Infinity }}
+                        >
+                            ✓ BADGE UNLOCKED
+                        </motion.div>
                     </motion.div>
                 )}
 
-                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', position: 'relative' }}>
                     <motion.button
                         className="btn btn-primary"
-                        style={{ padding: '0.85rem 2rem', fontSize: '0.85rem' }}
-                        whileHover={{ scale: 1.04 }}
+                        style={{ padding: '0.85rem 2.5rem', fontSize: '0.85rem' }}
+                        whileHover={{ scale: 1.04, boxShadow: '0 0 25px rgba(57,255,20,0.3)' }}
                         whileTap={{ scale: 0.97 }}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0, transition: { delay: 0.8 } }}
@@ -963,6 +1143,40 @@ function RewardPhase({ mission, totalXP, actualGainedXP, earnedBadge, dispatch }
                     </motion.button>
                 </div>
             </motion.div>
+        </div>
+    );
+}
+
+// ── Visual Rep: Git vs GitHub ────────────────────
+function GitVsGithubPanel() {
+    return (
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div style={{ flex: 1, padding: '1.25rem', background: 'rgba(57,255,20,0.06)', border: '1px solid rgba(57,255,20,0.3)', borderRadius: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                    <span style={{ fontSize: '1.8rem' }}>💻</span>
+                    <div className="pixel" style={{ color: 'var(--neon)', fontSize: '0.75rem' }}>GIT</div>
+                </div>
+                <div className="dim-text text-xs" style={{ marginBottom: '0.5rem', fontWeight: 'bold' }}>The Local Engine</div>
+                <ul className="dim-text text-xs" style={{ paddingLeft: '1.2rem', lineHeight: 1.6, margin: 0 }}>
+                    <li>Installed locally on your computer</li>
+                    <li>Saves versions & tracks history</li>
+                    <li>Works 100% offline</li>
+                    <li>Command-line software</li>
+                </ul>
+            </div>
+            <div style={{ flex: 1, padding: '1.25rem', background: 'rgba(88,166,255,0.06)', border: '1px solid rgba(88,166,255,0.3)', borderRadius: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                    <span style={{ fontSize: '1.8rem' }}>☁️</span>
+                    <div className="pixel" style={{ color: 'var(--blue)', fontSize: '0.75rem' }}>GITHUB</div>
+                </div>
+                <div className="dim-text text-xs" style={{ marginBottom: '0.5rem', fontWeight: 'bold' }}>The Cloud Service</div>
+                <ul className="dim-text text-xs" style={{ paddingLeft: '1.2rem', lineHeight: 1.6, margin: 0 }}>
+                    <li>Hosted on the web internet</li>
+                    <li>Centralizes teamwork & PRs</li>
+                    <li>Requires internet connection</li>
+                    <li>Visual UI website (GitHub.com)</li>
+                </ul>
+            </div>
         </div>
     );
 }

@@ -646,30 +646,71 @@ function FixCommandChallenge({ challenge, onComplete }) {
 function ConflictChallenge({ challenge, onComplete }) {
     const [resolved, setResolved] = useState(challenge.conflictText);
     const [feedback, setFeedback] = useState(null);
+    const [statusMsg, setStatusMsg] = useState('');
     const [hintsShown, setHintsShown] = useState(0);
     const [wrongCount, setWrongCount] = useState(0);
 
+    const normalize = (code) => {
+        return (code || '')
+            .replace(/\/\/.*/g, '')            // strip comments
+            .replace(/;+\s*$/g, '')            // strip trailing semicolons
+            .replace(/['"`]/g, '"')            // unify quotes
+            .replace(/\(\s+/g, '(')            // normalize ( spacing
+            .replace(/\s+\)/g, ')')            // normalize ) spacing
+            .replace(/\s+/g, ' ')              // collapse spaces
+            .trim();
+    };
+
     const handleResolve = () => {
         if (feedback === 'correct') return;
-        const hasMarkers = resolved.includes('<<<<') || resolved.includes('====') || resolved.includes('>>>>');
+
+        // 1. Check for leftover conflict markers (e.g. <<<, ===, >>>)
+        const hasMarkers = /<{3,}|={3,}|>{3,}/.test(resolved);
         if (hasMarkers) {
             setFeedback('markers-remain');
-            setTimeout(() => setFeedback(null), 2500);
+            setStatusMsg('⚠ Conflict markers (<<<<<<< HEAD, =======, >>>>>>>) are still present. Delete them completely!');
+            setTimeout(() => setFeedback(null), 3000);
             return;
         }
-        const cleanInput = resolved.trim().replace(/;$/, '').trim();
-        const cleanExpected = challenge.correct.trim().replace(/;$/, '').trim();
-        const correct = cleanInput === cleanExpected;
-        setFeedback(correct ? 'correct' : 'wrong');
-        if (correct) {
+
+        // 2. Check if main branch version was kept instead of loginpage
+        const textWithoutMarkers = resolved.trim();
+        if (textWithoutMarkers.includes('Hello from main') && !textWithoutMarkers.includes('Hello from loginpage')) {
+            setFeedback('wrong');
+            setStatusMsg('⚠ You kept the "main" branch line. Keep the "loginpage" version: console.log("Hello from loginpage")');
+            setWrongCount(c => c + 1);
+            setTimeout(() => setFeedback(null), 3500);
+            return;
+        }
+
+        // 3. Check if both versions were kept
+        if (textWithoutMarkers.includes('Hello from main') && textWithoutMarkers.includes('Hello from loginpage')) {
+            setFeedback('wrong');
+            setStatusMsg('⚠ Both versions are present. Delete the "main" line and keep only: console.log("Hello from loginpage")');
+            setWrongCount(c => c + 1);
+            setTimeout(() => setFeedback(null), 3500);
+            return;
+        }
+
+        // 4. Flexible match on incoming branch version
+        const normInput = normalize(resolved);
+        const normExpected = normalize(challenge.correct);
+        const isExactMatch = normInput === normExpected;
+        const isContentMatch = normInput === '"Hello from loginpage"' || normInput === 'Hello from loginpage';
+
+        if (isExactMatch || isContentMatch) {
+            setFeedback('correct');
+            setStatusMsg('✓ CONFLICT RESOLVED! Advancing to next step...');
             onComplete(challenge.xp, wrongCount * 5 + hintsShown * 10);
         } else {
+            setFeedback('wrong');
+            setStatusMsg('✗ Not quite right. Target code: console.log("Hello from loginpage")');
             setWrongCount(c => c + 1);
-            setTimeout(() => setFeedback(null), 2000);
+            setTimeout(() => setFeedback(null), 3000);
         }
     };
 
-    const feedbackMsg = {
+    const feedbackMsg = statusMsg || {
         'markers-remain': '⚠ Conflict markers (<<<, ===, >>>) are still present. Remove them!',
         'wrong': '✗ That\'s not the incoming branch version. Try again!',
         'correct': '✓ CONFLICT RESOLVED! Perfect.',

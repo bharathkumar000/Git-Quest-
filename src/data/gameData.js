@@ -559,7 +559,11 @@ console.log("Hello from main")
 console.log("Hello from loginpage")
 >>>>>>> loginpage`,
                 correct: 'console.log("Hello from loginpage")',
-                hints: ['Remove the conflict markers', 'Keep only the loginpage version'],
+                hints: [
+                    'Delete lines with <<<<<<< HEAD, =======, and >>>>>>> loginpage',
+                    'Delete console.log("Hello from main")',
+                    'Keep only: console.log("Hello from loginpage")'
+                ],
                 xp: 120,
             },
             {
